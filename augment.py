@@ -115,7 +115,7 @@ def augment(sample, wav_idx, spec_idx):
     
 
 filepath = "/data3/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
-wave, samp_freq = get_wave(filepath)
+wave, samp_frequency = get_wave(filepath)
 spec = get_log_mel_spec(wave)
 print(spec.shape)
 
