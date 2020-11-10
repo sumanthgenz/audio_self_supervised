@@ -33,12 +33,12 @@ def get_mfcc(wave, samp_freq=16000):
 
 def get_mel_spec(wave, samp_freq=16000):
     wave = torch.unsqueeze(wave, 0)
-    return (torchaudio.transforms.MelSpectrogram(sample_rate=samp_freq)(wave))[0,:,:].numpy()
+    return (torchaudio.transforms.MelSpectrogram(sample_rate=samp_freq)(wave))[0,:,:]
 
-def get_log_mel_spec(wave):
+def get_log_mel_spec(wave, samp_freq=16000):
     wave = torch.unsqueeze(wave, 0)
     spec = torchaudio.transforms.MelSpectrogram()(wave)
-    return spec.log2()[0,:,:].numpy()
+    return spec.log2()[0,:,:]
 
 def wave_segment(wave, threshold):
     size = int(wave.shape[0] * threshold)
@@ -80,11 +80,22 @@ def wave_voice(wave, threshold):
 def wave_resample(wave):
     return wave
 
-def spec_crop(spec):
-    return spec
+def spec_crop(spec, threshold):
+    size = int(spec.shape[1] * threshold)
+    start = random.randint(0, (spec.shape[1] - size))
+    return spec[:, start : (start + size)]
 
-def spec_random_noise(spec):
-    return spec
+def spec_random_noise(spec, threshold):
+    noise = threshold * 0.2
+    return spec + (noise * np.random.normal(size=spec.shape))
+
+def spec_time_mask(spec, threshold):
+    size = int(spec.shape[1] * threshold)
+    return torchaudio.transforms.TimeMasking(size)(specgram=spec)
+
+def spec_freq_mask(spec, threshold):
+    size = int(spec.shape[0] * threshold)
+    return torchaudio.transforms.TimeMasking(size)(specgram=spec)
 
 def spec_checkerboard_noise(spec):
     return spec
@@ -96,12 +107,6 @@ def spec_time_reverse(spec):
     return spec
 
 def spec_time_stretch(spec):
-    return spec
-
-def spec_time_mask(spec):
-    return spec
-
-def spec_freq_mask(spec):
     return spec
 
 wave_augmentations = [wave_segment,
@@ -150,20 +155,21 @@ def l2_norm(x,y):
 
 filepath = "/data3/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
 wave, samp_frequency = get_wave(filepath)
-print(torch.min(wave))
-print(torch.mean(wave))
-print(torch.max(wave))
+# print(torch.min(wave))
+# print(torch.mean(wave))
+# print(torch.max(wave))
 
-res = wave_voice(wave, 0.5)
+res = get_log_mel_spec(wave, 16000)
+res = spec_time_mask(res, 0.25)
 # res = wave + 0.1
 
-print(torch.min(res))
-print(torch.mean(res))
-print(torch.max(res))
+# print(torch.min(res))
+# print(torch.mean(res))
+# print(torch.max(res))
 
 
-print(l2_norm(wave, res))
+# print(l2_norm(wave, res))
 
-# plt.figure()
-# plt.imshow(res)
-# plt.savefig("log_mel_spectogram.png")
+plt.figure()
+plt.imshow(res)
+plt.savefig("log_mel_spectogram.png")
