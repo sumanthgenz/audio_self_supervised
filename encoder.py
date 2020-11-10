@@ -34,7 +34,7 @@ import wandb
 import gc 
 
 import torchaudio
-from audio_byol.dataloader import AudioDataset
+from audio_self_supervised.dataloader import AudioDataset
 
 
 class Encoder(pl.LightningModule):

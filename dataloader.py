@@ -2,13 +2,12 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import torchvision
+import torchaudio
 import torchvision.transforms as transforms
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-
-
 
 import librosa
 import openpyxl
@@ -33,7 +32,7 @@ import matplotlib.pyplot as plt
 import wandb
 import gc 
 
-import torchaudio
+from audio_self_supervised.augment import get_augmented_views
 
 class AudioDataset(Dataset):
 
@@ -52,7 +51,6 @@ class AudioDataset(Dataset):
             wav_paths.append(path)
         return wav_paths
 
-
     def get_pickle(self, classPath):
         with open('Desktop/kinetics_{}.pickle'.format(classPath), 'rb') as handle:
             result = pickle.load(handle)
@@ -67,11 +65,13 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         try:
             filePath = self.wav_paths[idx]
-            num_label = int((filePath.split('/')[4]).split('_')[0]) - 1
+            # num_label = int((filePath.split('/')[4]).split('_')[0]) - 1
+            # wav, samp_freq = torchaudio.load(filePath)
+            # feat = np.transpose(np.array(torchaudio.compliance.kaldi.mfcc(wav, sample_frequency=self.samp_freq)))
+            # return feat, num_label, self.seq_len
 
-            wav, samp_freq = torchaudio.load(filePath)
-            feat = np.transpose(np.array(torchaudio.compliance.kaldi.mfcc(wav, sample_frequency=self.samp_freq)))
-            return feat, num_label, self.seq_len
+            view1, view2 = get_augmented_views(filePath)
+            return view1, view2
 
         except:
             return None, None, None
