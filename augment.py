@@ -176,9 +176,10 @@ def l2_norm(x,y):
     return np.linalg.norm(x-y)
     
 
+# filepath = "/ssd/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
 
 for _ in tqdm(range(250)):
-    filepath = "/data3/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
+    filepath = "/ssd/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
     view1, view2 = get_augmented_views(filepath)
 
 # wave, samp_frequency = get_wave(filepath)
@@ -205,6 +206,14 @@ plt.imshow(view1)
 
 f.add_subplot(1, 2, 2)
 plt.imshow(view2)
-plt.savefig("log_mel_two_views.png")
+plt.savefig("Desktop/log_mel_two_views.png")
+
+# wav, samp_freq = torchaudio.load(filepath)
+# print(wav.shape)
+# wav = wav[::20]
+# print(wav.shape)
+# wav = (wav.mean(dim=0))[::4]
+# feat = np.array((torchaudio.transforms.MFCC(sample_rate=16000)(wav.unsqueeze(0))).mean(dim=0))
+# print(feat.shape)
 
 #Test git push
