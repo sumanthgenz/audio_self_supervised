@@ -20,6 +20,10 @@ from PIL import Image
 import warnings
 import glob
 
+print(torch.__version__)
+print(torchaudio.__version__)
+
+
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
 warnings.filterwarnings("ignore")
@@ -50,7 +54,7 @@ def wave_segment(wave, threshold):
     start = random.randint(0, (wave.shape[0] - size))
     return wave[start : (start + size)]
 
-def wave_random_noise(wave, threshold):
+def wave_gaussian_noise(wave, threshold):
     noise = threshold * 0.2
     return wave + (noise * np.random.normal(size=wave.shape[0]))
 
@@ -89,7 +93,7 @@ def spec_crop(spec, threshold):
     start = random.randint(0, (spec.shape[1] - size))
     return spec[:, start : (start + size)]
 
-def spec_random_noise(spec, threshold):
+def spec_gaussian_noise(spec, threshold):
     noise = threshold * 0.2
     return spec + (noise * np.random.normal(size=spec.shape))
 
@@ -216,4 +220,4 @@ plt.savefig("Desktop/log_mel_two_views.png")
 # feat = np.array((torchaudio.transforms.MFCC(sample_rate=16000)(wav.unsqueeze(0))).mean(dim=0))
 # print(feat.shape)
 
-#Test git push
+#Test git push on stout
