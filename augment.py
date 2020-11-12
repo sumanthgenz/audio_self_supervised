@@ -20,6 +20,10 @@ from PIL import Image
 import warnings
 import glob
 
+print(torch.__version__)
+print(torchaudio.__version__)
+
+
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
 warnings.filterwarnings("ignore")
