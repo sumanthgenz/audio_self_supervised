@@ -54,7 +54,7 @@ def wave_segment(wave, threshold):
     start = random.randint(0, (wave.shape[0] - size))
     return wave[start : (start + size)]
 
-def wave_random_noise(wave, threshold):
+def wave_gaussian_noise(wave, threshold):
     noise = threshold * 0.2
     return wave + (noise * np.random.normal(size=wave.shape[0]))
 
@@ -93,7 +93,7 @@ def spec_crop(spec, threshold):
     start = random.randint(0, (spec.shape[1] - size))
     return spec[:, start : (start + size)]
 
-def spec_random_noise(spec, threshold):
+def spec_gaussian_noise(spec, threshold):
     noise = threshold * 0.2
     return spec + (noise * np.random.normal(size=spec.shape))
 
