@@ -34,8 +34,7 @@ def get_wave(path):
     return wave, samp_freq
 
 def get_mfcc(wave, samp_freq=16000):
-    wave = torch.unsqueeze(wave, 0)
-    return np.transpose(np.array(torchaudio.compliance.kaldi.mfcc(wave, sample_frequency=samp_freq)))
+    return np.array((torchaudio.transforms.MFCC(sample_rate=samp_freq)(wav.unsqueeze(0))).mean(dim=0))
 
 def get_mel_spec(wave, samp_freq=16000):
     wave = torch.unsqueeze(wave, 0)
@@ -105,7 +104,7 @@ def spec_freq_mask(spec, threshold):
     size = int(spec.shape[0] * threshold)
     return torchaudio.transforms.FrequencyMasking(size)(specgram=spec)
 
-def spec_checkerboard_noise(spec, threshold):
+def spec_checker_noise(spec, threshold):
     return spec_freq_mask(spec_time_mask(spec, threshold), threshold)
 
 def spec_flip(spec, threshold):
@@ -119,15 +118,15 @@ def spec_time_stretch(spec, threshold):
 
 wave_augmentations = [wave_identity,
                     wave_segment,
-                    wave_random_noise,
+                    wave_gaussian_noise,
                     wave_amplitude,
                     wave_db,
                     wave_power]
 
 spec_augmentations = [spec_identity,
                     spec_crop,
-                    spec_random_noise,
-                    spec_checkerboard_noise,
+                    spec_gaussian_noise,
+                    spec_checker_noise,
                     spec_flip,
                     spec_time_reverse,
                     spec_time_mask,
