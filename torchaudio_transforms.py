@@ -13,10 +13,13 @@ from tqdm import tqdm
 import warnings
 import glob
 
+from metrics import *
+
 assert torch.__version__.startswith("1.7")
 assert torchaudio.__version__.startswith("0.7")
 
 torchaudio.set_audio_backend("sox_io") 
+
 
 
 class WaveIdentity():
@@ -31,7 +34,7 @@ class WaveIdentity():
 class WaveSegment():
 
     def __init__(self, threshold):
-        self.segment_size = threshold
+        self.segment_size = 1 - threshold
 
     def __call__(self, wave):
         size = int(wave.shape[0] * self.segment_size)
@@ -95,10 +98,11 @@ class SpecIdentity():
 
 class SpecCrop():
     def __init__(self, threshold):
-        self.crop_size = threshold
+        self.crop_size = 1 - threshold
 
     def __call__(self, spec):
-        size = int(spec.shape[1] * self.crop_size)
+        # size = int(spec.shape[1] * self.crop_size)
+        size = 1000
         start = random.randint(0, (spec.shape[1] - size))
         return spec[:, start : (start + size)]
 
@@ -161,7 +165,6 @@ class SpecTimeReverse():
 # used to access transforms by name
 wave_transforms = {
         'wave_identity': WaveIdentity,
-        'wave_segment': WaveSegment,
         'wave_gaussian_noise': WaveGaussianNoise,
         'wave_amplitude,': WaveAmplitude,
         'wave_db': WaveDB,
@@ -170,7 +173,6 @@ wave_transforms = {
 
 spec_transforms = {
         'spec_identity': SpecIdentity,
-        'spec_crop': SpecCrop,
         'spec_gaussian_noise': SpecGaussianNoise,
         'spec_checker_noise': SpecCheckerNoise,
         'spec_flip': SpecFlip,
@@ -202,15 +204,15 @@ def get_log_mel_spec(wave, samp_freq=16000):
 
 def augment(sample, wave_transform, spec_transform, threshold):
     wave = wave_transform(threshold)(sample)
-
+    crop_size = 0.2
     wave = wave.type(torch.FloatTensor)
     spec = get_log_mel_spec(wave)
 
     #suppressing "assert mask_end - mask_start < mask_param" for time/freq masks
     try:
-        return spec_transform(threshold)(spec)
+        return spec_transform(threshold)(SpecCrop(threshold)(spec))
     except:
-        return spec
+        return SpecCrop(threshold)(spec)
 
 
 def get_augmented_views(path):
@@ -224,34 +226,19 @@ def get_augmented_views(path):
     spec2 =  random.choice(list(spec_transforms.values()))
     threshold2 = random.uniform(0.0, 0.5)
 
-    return augment(sample, wave1, spec1, threshold1), augment(sample, wave2, spec2, threshold2)
-
+    return augment(sample, wave1, spec1, threshold1), augment(sample, wave2, spec2, threshold2), (wave1, spec1), (wave2, spec2)
     
-def angular_similarity(x,y):
-    nx = np.linalg.norm(x.numpy())
-    ny = np.linalg.norm(y.numpy())
-    cos = np.dot(x, y)/(nx * ny)
-    if cos > 1:
-        cos = 1
-    elif cos < -1:
-        cos = -1
-    return 1 - np.arccos(cos)/np.pi
+if __name__ == '__main__':
+    for _ in tqdm(range(250)):
+        filepath = "/ssd/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
+        view1, view2, _, _ = get_augmented_views(filepath)
+        
+    f = plt.figure()
+    f.add_subplot(1, 2, 1)
+    plt.imshow(view1)
 
-
-def l2_norm(x,y):
-    return np.linalg.norm(x-y)
-    
-
-for _ in tqdm(range(250)):
-    filepath = "/ssd/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
-    view1, view2 = get_augmented_views(filepath)
-    
-f = plt.figure()
-f.add_subplot(1, 2, 1)
-plt.imshow(view1)
-
-f.add_subplot(1, 2, 2)
-plt.imshow(view2)
-plt.savefig("Desktop/log_mel_two_views.png")
+    f.add_subplot(1, 2, 2)
+    plt.imshow(view2)
+    plt.savefig("Desktop/log_mel_two_views.png")
 
 #Test git push on stout

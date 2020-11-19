@@ -10,19 +10,11 @@ import pickle
 import tqdm
 from tqdm import tqdm
 
-import librosa
-import librosa.display
-from IPython.display import Audio
-import pydub
-from pydub import AudioSegment
-from PIL import Image
 
 import warnings
 import glob
 
-print(torch.__version__)
-print(torchaudio.__version__)
-
+from metrics import *
 
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
@@ -163,60 +155,51 @@ def get_augmented_views(path):
     threshold2 = random.uniform(0.0, 0.5)
 
     return augment(sample, wave_idx1, spec_idx1, threshold1), augment(sample, wave_idx2, spec_idx2, threshold2)
-
-    
-def angular_similarity(x,y):
-    nx = np.linalg.norm(x.numpy())
-    ny = np.linalg.norm(y.numpy())
-    cos = np.dot(x, y)/(nx * ny)
-    if cos > 1:
-        cos = 1
-    elif cos < -1:
-        cos = -1
-    return 1 - np.arccos(cos)/np.pi
-
-def l2_norm(x,y):
-    return np.linalg.norm(x-y)
     
 
 # filepath = "/ssd/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
 
-for _ in tqdm(range(250)):
-    filepath = "/ssd/kinetics_pykaldi/train/25_riding a bike/0->--JMdI8PKvsc.wav"
-    view1, view2 = get_augmented_views(filepath)
+if __name__ == '__main__':
 
-# wave, samp_frequency = get_wave(filepath)
-# print(torch.min(wave))
-# print(torch.mean(wave))
-# print(torch.max(wave))
+    print(torch.__version__)
+    print(torchaudio.__version__)
 
-# res = get_log_mel_spec(wave, 16000)
-# res = spec_checkerboard_noise(res, 0.5)
-# res = spec_freq_mask(res, 0.5)
-# res = wave + 0.1
+    for _ in tqdm(range(250)):
+        filepath = "/ssd/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
+        view1, view2 = get_augmented_views(filepath)
 
-# print(torch.min(res))
-# print(torch.mean(res))
-# print(torch.max(res))
+    # wave, samp_frequency = get_wave(filepath)
+    # print(torch.min(wave))
+    # print(torch.mean(wave))
+    # print(torch.max(wave))
+
+    # res = get_log_mel_spec(wave, 16000)
+    # res = spec_checkerboard_noise(res, 0.5)
+    # res = spec_freq_mask(res, 0.5)
+    # res = wave + 0.1
+
+    # print(torch.min(res))
+    # print(torch.mean(res))
+    # print(torch.max(res))
 
 
-# print(l2_norm(wave, res))
+    # print(l2_norm(wave, res))
 
 
-f = plt.figure()
-f.add_subplot(1, 2, 1)
-plt.imshow(view1)
+    f = plt.figure()
+    f.add_subplot(1, 2, 1)
+    plt.imshow(view1)
 
-f.add_subplot(1, 2, 2)
-plt.imshow(view2)
-plt.savefig("Desktop/log_mel_two_views.png")
+    f.add_subplot(1, 2, 2)
+    plt.imshow(view2)
+    plt.savefig("Desktop/log_mel_two_views.png")
 
-# wav, samp_freq = torchaudio.load(filepath)
-# print(wav.shape)
-# wav = wav[::20]
-# print(wav.shape)
-# wav = (wav.mean(dim=0))[::4]
-# feat = np.array((torchaudio.transforms.MFCC(sample_rate=16000)(wav.unsqueeze(0))).mean(dim=0))
-# print(feat.shape)
+    # wav, samp_freq = torchaudio.load(filepath)
+    # print(wav.shape)
+    # wav = wav[::20]
+    # print(wav.shape)
+    # wav = (wav.mean(dim=0))[::4]
+    # feat = np.array((torchaudio.transforms.MFCC(sample_rate=16000)(wav.unsqueeze(0))).mean(dim=0))
+    # print(feat.shape)
 
 #Test git push on stout

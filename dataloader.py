@@ -9,36 +9,35 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
-import librosa
-import openpyxl
-import torch
 import numpy
 import numpy as np
-import sklearn
-import librosa
-import librosa.display
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-import torchvision
-from PIL import Image
-from datetime import datetime
+import random
+import pickle
+import tqdm
+from tqdm import tqdm
+import sklearn
+
+import wandb
 import warnings
 import glob
-from tqdm import tqdm
-from joblib import Parallel, delayed
-import pickle
-import pandas as pd 
-from collections import Counter
-import matplotlib.pyplot as plt
-import wandb
 import gc 
+import os
 
-from audio_self_supervised.augment import get_augmented_views
+from torchaudio_transforms import get_augmented_views
+from metrics import *
+
+torchaudio.set_audio_backend("sox_io") 
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
+warnings.filterwarnings("ignore")
 
 class AudioDataset(Dataset):
 
-    def __init__(self, csvType):
-        self.csvType = csvType
-        self.dir = "/data3/kinetics_pykaldi/{}".format(csvType)
+    def __init__(self, dataType):
+        self.dataType = dataType
+        self.dir = "/ssd/kinetics_audio/{}".format(dataType)
         self.num_classes = 700
         self.downsamp_factor = 2
         self.samp_freq = 22050*4
@@ -70,8 +69,23 @@ class AudioDataset(Dataset):
             # feat = np.transpose(np.array(torchaudio.compliance.kaldi.mfcc(wav, sample_frequency=self.samp_freq)))
             # return feat, num_label, self.seq_len
 
-            view1, view2 = get_augmented_views(filePath)
-            return view1, view2
+            view1, view2, t1, t2 = get_augmented_views(filePath)
+            return view1, view2, t1, t2
 
         except:
             return None, None, None
+
+if __name__ == '__main__':
+    ad = AudioDataset("train")
+    view1, view2, t1, t2 = ad.__getitem__(250)
+
+    print(t1)
+    print(t2)
+
+    f = plt.figure()
+    f.add_subplot(1, 2, 1)
+    plt.imshow(view1)
+
+    f.add_subplot(1, 2, 2)
+    plt.imshow(view2)
+    plt.savefig("Desktop/log_dataloader_two_views.png")
