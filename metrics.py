@@ -30,6 +30,11 @@ def l2_distance(x,y):
     # return np.linalg.norm(x-y)
     return hypersphere_norm(x-y)
 
+def vector_couloumb(x, y, pos_pair, k=0.05, q1=1, q2=1):
+    force = (k * q1 * q2) / (l2_distance(x, y)**2)
+    if pos_pair:
+        return -force
+    return force
 
 
 #Batch-Wise
@@ -42,6 +47,20 @@ def infoNCE(x, y):
     sim_matrix = torch.mm(x, y.t())
     loss = torch.nn.cross_entropy(sim_matrix, pos_pairs)
     return loss
+
+#assume x and y normalized to hypersphere 
+def batch_couloumb(x, y, k=0.05, q1=1, q2=1):
+    sim_matrix = torch.mm(x, y.t())
+    force_loss = 0
+    for i in sim_matrix:
+        for k in sim_matrix[i]:
+            dist = 2 - (1+sim_matrix[i][k])
+            if i==k:
+                force_loss -= 1/dist
+            else:
+                force_loss += 1/dist
+    force_loss *= (k*q1*q2)  
+    return force_loss
 
 # lalign and lunif from https://arxiv.org/pdf/2005.10242.pdf
 def lalign(x, y, alpha=2):
@@ -58,7 +77,6 @@ def alignment(x, y, alpha=2):
 def uniformity(x, t=3):
     sq_pdist = torch.pdist(x, p=2).pow(2)
     return 1 - sq_pdist.mul(-t).exp().mean()
-
 
 #implementation from aai/utils/torch/metrics.py
 def _compute_mAP(logits, targets, threshold):  
