@@ -7,7 +7,7 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-
+from efficientnet_pytorch import EfficientNet
 
 
 import librosa
@@ -34,7 +34,7 @@ import wandb
 import gc 
 
 import torchaudio
-from audio_self_supervised.dataloader import AudioDataset
+from dataloader import AudioDataset
 
 #Implementation from
 # https://github.com/CVxTz/COLA_pytorch/blob/master/audio_encoder/encoder.py

@@ -1,43 +1,43 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import torchvision
 import torchaudio
-import torchvision.transforms as transforms
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import WandbLogger
+from torch.utils.data import Dataset, DataLoader
 
-import numpy
-import numpy as np
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import random
 import pickle
-import tqdm
 from tqdm import tqdm
-import sklearn
 
-import wandb
 import warnings
 import glob
 import gc 
 import os
+import socket
 
 from torchaudio_transforms import get_augmented_views
 from metrics import *
+from encoder import *
 
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
 warnings.filterwarnings("ignore")
 
+data = ""
+host = socket.gethostname()
+if host == "stout":
+    data = "big"
+elif socket.gethostname() == "greybeard":
+    data = "ssd"
+
 class AudioDataset(Dataset):
 
     def __init__(self, dataType):
         self.dataType = dataType
-        self.dir = "/ssd/kinetics_audio/{}".format(dataType)
+        self.dir = "/{}/kinetics_audio/{}".format(data, dataType)
         self.num_classes = 700
         self.downsamp_factor = 2
         self.samp_freq = 22050*4
@@ -70,22 +70,32 @@ class AudioDataset(Dataset):
             # return feat, num_label, self.seq_len
 
             view1, view2, t1, t2 = get_augmented_views(filePath)
-            return view1, view2, t1, t2, True
+            return view1, view2, t1, t2
 
         except:
-            return None, None, None, None, False
+            return None, None, None, None
 
 if __name__ == '__main__':
+    cnn1 = torch.nn.Conv2d(1, 3, kernel_size=5)
+    model = EfficientNet.from_name(
+        "efficientnet-b0", 
+        include_top=False, 
+        drop_connect_rate=0.1)
+
+    # bad_count = 0
+
     ad = AudioDataset("train")
-    bad_count = 0
-    for i in tqdm(range(1000)):
-        view1, view2, t1, t2, flag = ad.__getitem__(i)
-        if not flag:
-            bad_count += 1
+    for i in tqdm(range(1)):
+        view1, view2, t1, t2 = ad.__getitem__(250)
+        view1, view2 = view1.type(torch.FloatTensor), view2.type(torch.FloatTensor)
+        view1, view2 = cnn1(view1.unsqueeze(0).unsqueeze(0)), cnn1(view2.unsqueeze(0).unsqueeze(0))
+        view1, view2 = model(view1), model(view2)
 
     print(t1)
     print(t2)
-    print(bad_count)
+    print(view1.shape)
+    print(view2.shape)
+    # print(bad_count)
 
     # f = plt.figure()
     # f.add_subplot(1, 2, 1)

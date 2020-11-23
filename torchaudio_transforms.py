@@ -12,6 +12,8 @@ from tqdm import tqdm
 
 import warnings
 import glob
+import socket
+
 
 from metrics import *
 
@@ -20,7 +22,12 @@ assert torchaudio.__version__.startswith("0.7")
 
 torchaudio.set_audio_backend("sox_io") 
 
-
+data = ""
+host = socket.gethostname()
+if host == "stout":
+    data = "big"
+elif socket.gethostname() == "greybeard":
+    data = "ssd"
 
 class WaveIdentity():
 
@@ -204,17 +211,15 @@ def get_log_mel_spec(wave, samp_freq=16000):
 
 def augment(sample, wave_transform, spec_transform, threshold):
     wave = wave_transform(threshold)(sample)
-    crop_size = 0.2
     wave = wave.type(torch.FloatTensor)
     spec = get_log_mel_spec(wave)
 
     #suppressing "assert mask_end - mask_start < mask_param" for time/freq masks
-    # try:
-    #     return spec_transform(crop_size)(SpecCrop(threshold)(spec))
-    # except:
-    #     return SpecCrop(crop_size)(spec)
-    # return SpecCrop(crop_size)(spec)
-    return spec
+    try:
+        return spec_transform(threshold)(SpecCrop(threshold)(spec))
+    except:
+        return SpecCrop(threshold)(spec)
+    # return SpecCrop(threshold)(spec)
 
 def get_augmented_views(path):
     sample, _ = get_wave(path)
@@ -231,7 +236,8 @@ def get_augmented_views(path):
     
 if __name__ == '__main__':
     for _ in tqdm(range(250)):
-        filepath = "/big/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
+        filepath = "/{dir}/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav".format(dir = data)
+        # filepath = "/big/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
         view1, view2, _, _ = get_augmented_views(filepath)
         
     f = plt.figure()
