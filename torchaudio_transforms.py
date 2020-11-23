@@ -209,11 +209,12 @@ def augment(sample, wave_transform, spec_transform, threshold):
     spec = get_log_mel_spec(wave)
 
     #suppressing "assert mask_end - mask_start < mask_param" for time/freq masks
-    try:
-        return spec_transform(threshold)(SpecCrop(threshold)(spec))
-    except:
-        return SpecCrop(threshold)(spec)
-
+    # try:
+    #     return spec_transform(crop_size)(SpecCrop(threshold)(spec))
+    # except:
+    #     return SpecCrop(crop_size)(spec)
+    # return SpecCrop(crop_size)(spec)
+    return spec
 
 def get_augmented_views(path):
     sample, _ = get_wave(path)
@@ -230,7 +231,7 @@ def get_augmented_views(path):
     
 if __name__ == '__main__':
     for _ in tqdm(range(250)):
-        filepath = "/ssd/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
+        filepath = "/big/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
         view1, view2, _, _ = get_augmented_views(filepath)
         
     f = plt.figure()

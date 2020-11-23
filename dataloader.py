@@ -70,22 +70,27 @@ class AudioDataset(Dataset):
             # return feat, num_label, self.seq_len
 
             view1, view2, t1, t2 = get_augmented_views(filePath)
-            return view1, view2, t1, t2
+            return view1, view2, t1, t2, True
 
         except:
-            return None, None, None
+            return None, None, None, None, False
 
 if __name__ == '__main__':
     ad = AudioDataset("train")
-    view1, view2, t1, t2 = ad.__getitem__(250)
+    bad_count = 0
+    for i in tqdm(range(1000)):
+        view1, view2, t1, t2, flag = ad.__getitem__(i)
+        if not flag:
+            bad_count += 1
 
     print(t1)
     print(t2)
+    print(bad_count)
 
-    f = plt.figure()
-    f.add_subplot(1, 2, 1)
-    plt.imshow(view1)
+    # f = plt.figure()
+    # f.add_subplot(1, 2, 1)
+    # plt.imshow(view1)
 
-    f.add_subplot(1, 2, 2)
-    plt.imshow(view2)
-    plt.savefig("Desktop/log_dataloader_two_views.png")
+    # f.add_subplot(1, 2, 2)
+    # plt.imshow(view2)
+    # plt.savefig("Desktop/log_dataloader_two_views.png")
