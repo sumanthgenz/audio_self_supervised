@@ -18,9 +18,10 @@ import gc
 import os
 import socket
 
-from torchaudio_transforms import get_augmented_views
+from augment import *
 from metrics import *
 from encoder import *
+# from torchaudio_transforms import *
 
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
@@ -70,37 +71,55 @@ class AudioDataset(Dataset):
             # return feat, num_label, self.seq_len
 
             view1, view2, t1, t2 = get_augmented_views(filePath)
+            # return view1.type(torch.FloatTensor), view2.type(torch.FloatTensor), t1, t2
             return view1, view2, t1, t2
 
         except:
             return None, None, None, None
 
 if __name__ == '__main__':
-    cnn1 = torch.nn.Conv2d(1, 3, kernel_size=5)
+    cnn1 = torch.nn.Conv2d(
+                    in_channels=1, 
+                    out_channels=3, 
+                    kernel_size=3)
     model = EfficientNet.from_name(
         "efficientnet-b0", 
         include_top=False, 
         drop_connect_rate=0.1)
 
+    encoder = FeatureModel(
+                            dropout=0.1,
+                            model_dimension=24)
+
+    fc1 = torch.nn.Linear(1280, 1024)
     # bad_count = 0
 
     ad = AudioDataset("train")
     for i in tqdm(range(1)):
         view1, view2, t1, t2 = ad.__getitem__(250)
-        view1, view2 = view1.type(torch.FloatTensor), view2.type(torch.FloatTensor)
-        view1, view2 = cnn1(view1.unsqueeze(0).unsqueeze(0)), cnn1(view2.unsqueeze(0).unsqueeze(0))
-        view1, view2 = model(view1), model(view2)
+        # view1, view2 = view1.type(torch.FloatTensor), view2.type(torch.FloatTensor)
+        # view1, view2 = cnn1(view1.unsqueeze(0).unsqueeze(0)), cnn1(view2.unsqueeze(0).unsqueeze(0))
+        # view1, view2 = model(view1), model(view2)
+        # view1, view2 =  view1.squeeze(3).squeeze(2), view2.squeeze(3).squeeze(2)
+        # view1, view2 = fc1(view1), fc1(view2)
+        # view1, view2 = encoder(view1.unsqueeze(0)), encoder(view2.unsqueeze(0))
+
 
     print(t1)
     print(t2)
-    print(view1.shape)
-    print(view2.shape)
-    # print(bad_count)
+    # print(view1)
+    # print(view2)
+    # print(kl_divergence(
+    #                 (view1.squeeze(0)).detach(),
+    #                 (view1.squeeze(0)).detach()
+    #             )
+    # )
 
-    # f = plt.figure()
-    # f.add_subplot(1, 2, 1)
-    # plt.imshow(view1)
 
-    # f.add_subplot(1, 2, 2)
-    # plt.imshow(view2)
-    # plt.savefig("Desktop/log_dataloader_two_views.png")
+    f = plt.figure()
+    f.add_subplot(1, 2, 1)
+    plt.imshow(view1)
+
+    f.add_subplot(1, 2, 2)
+    plt.imshow(view2)
+    plt.savefig("Desktop/log_dataloader_two_views.png")

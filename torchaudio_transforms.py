@@ -9,6 +9,9 @@ import random
 import pickle
 import tqdm
 from tqdm import tqdm
+from itertools import permutations  
+from random import shuffle
+
 
 import warnings
 import glob
@@ -50,6 +53,7 @@ class WaveSegment():
 
 
 class WaveGaussianNoise():
+
     def __init__(self, threshold):
         self.noise_intensity = threshold
         self.constant = 0.2
@@ -60,6 +64,7 @@ class WaveGaussianNoise():
 
 
 class WaveAmplitude():
+
     def __init__(self, threshold):
         self.amplitude_scale = threshold
         self.constant = 10
@@ -72,6 +77,7 @@ class WaveAmplitude():
 
 
 class WavePower():
+
     def __init__(self, threshold):
         self.power_scale = threshold
         self.constant = 10
@@ -84,6 +90,7 @@ class WavePower():
 
 
 class WaveDB():
+
     def __init__(self, threshold):
         self.db_scale = threshold
         self.constant = 10
@@ -96,14 +103,16 @@ class WaveDB():
 
 
 class SpecIdentity():
+
     def __init__(self, threshold):
         self.threshold = threshold
 
     def __call__(self, spec):
-        return wave
+        return spec
 
 
-class SpecCrop():
+class SpecRandomCrop():
+
     def __init__(self, threshold):
         self.crop_size = 1 - threshold
 
@@ -113,8 +122,20 @@ class SpecCrop():
         start = random.randint(0, (spec.shape[1] - size))
         return spec[:, start : (start + size)]
 
+class SpecFixedCrop():
+
+    def __init__(self, threshold):
+        self.crop_size = 1 - threshold
+
+    def __call__(self, spec):
+        # size = int(spec.shape[1] * self.crop_size)
+        size = 1000
+        start = 250
+        return spec[:, start : (start + size)]
+
 
 class SpecGaussianNoise():
+
     def __init__(self, threshold):
         self.noise_intensity = threshold
         self.constant = 0.2
@@ -125,6 +146,7 @@ class SpecGaussianNoise():
 
 
 class SpecTimeMask():
+
     def __init__(self, threshold):
         self.mask_size = threshold
 
@@ -134,6 +156,7 @@ class SpecTimeMask():
 
 
 class SpecFreqMask():
+
     def __init__(self, threshold):
         self.mask_size = threshold
 
@@ -143,6 +166,7 @@ class SpecFreqMask():
 
 
 class SpecCheckerNoise():
+
     def __init__(self, threshold):
         self.mask_size = threshold
 
@@ -153,6 +177,7 @@ class SpecCheckerNoise():
 
 
 class SpecFlip():
+
     def __init__(self, threshold):
         self.threshold = threshold
 
@@ -161,12 +186,25 @@ class SpecFlip():
 
 
 class SpecTimeReverse():
+
     def __init__(self, threshold):
         self.threshold = threshold
 
     def __call__(self, spec):
         return torch.flip(spec, [1])    
 
+
+class SpecShuffle():
+
+    def __init__(self, threshold):
+        self.threshold = threshold
+
+    def __call__(self, spec):
+        segments = np.array(np.split(spec.T.numpy(), 5, axis=0))
+        np.random.shuffle(segments)
+        segments = segments.flatten().reshape(1000,128).T
+        return segments
+        # return spec
 
 
 # used to access transforms by name
@@ -183,69 +221,6 @@ spec_transforms = {
         'spec_gaussian_noise': SpecGaussianNoise,
         'spec_checker_noise': SpecCheckerNoise,
         'spec_flip': SpecFlip,
-        'spec_time_reverse': SpecTimeReverse
+        'spec_time_reverse': SpecTimeReverse,
+        'sepc_shuffle': SpecShuffle
 }
-
-
-
-def get_wave(path):
-    wave, samp_freq = torchaudio.load(path)
-    wave = wave.mean(dim=0) #avg both channels to get single audio strean
-    return wave, samp_freq
-
-
-def get_mfcc(wave, samp_freq=16000):
-    return np.array((torchaudio.transforms.MFCC(sample_rate=samp_freq)(wav.unsqueeze(0))).mean(dim=0))
-
-
-def get_mel_spec(wave, samp_freq=16000):
-    wave = torch.unsqueeze(wave, 0)
-    return (torchaudio.transforms.MelSpectrogram(sample_rate=samp_freq)(wave))[0,:,:]
-
-
-def get_log_mel_spec(wave, samp_freq=16000):
-    wave = torch.unsqueeze(wave, 0)
-    spec = torchaudio.transforms.MelSpectrogram()(wave)
-    return spec.log2()[0,:,:]
-
-
-def augment(sample, wave_transform, spec_transform, threshold):
-    wave = wave_transform(threshold)(sample)
-    wave = wave.type(torch.FloatTensor)
-    spec = get_log_mel_spec(wave)
-
-    #suppressing "assert mask_end - mask_start < mask_param" for time/freq masks
-    try:
-        return spec_transform(threshold)(SpecCrop(threshold)(spec))
-    except:
-        return SpecCrop(threshold)(spec)
-    # return SpecCrop(threshold)(spec)
-
-def get_augmented_views(path):
-    sample, _ = get_wave(path)
-
-    wave1 =  random.choice(list(wave_transforms.values()))
-    spec1 =  random.choice(list(spec_transforms.values()))
-    threshold1 = random.uniform(0.0, 0.5)
-
-    wave2 =  random.choice(list(wave_transforms.values()))
-    spec2 =  random.choice(list(spec_transforms.values()))
-    threshold2 = random.uniform(0.0, 0.5)
-
-    return augment(sample, wave1, spec1, threshold1), augment(sample, wave2, spec2, threshold2), (wave1, spec1), (wave2, spec2)
-    
-if __name__ == '__main__':
-    for _ in tqdm(range(250)):
-        filepath = "/{dir}/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav".format(dir = data)
-        # filepath = "/big/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav"
-        view1, view2, _, _ = get_augmented_views(filepath)
-        
-    f = plt.figure()
-    f.add_subplot(1, 2, 1)
-    plt.imshow(view1)
-
-    f.add_subplot(1, 2, 2)
-    plt.imshow(view2)
-    plt.savefig("Desktop/log_mel_two_views.png")
-
-#Test git push on stout
