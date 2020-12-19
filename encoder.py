@@ -1,60 +1,59 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
-import torch.nn as nn
+import torchaudio
 import torchvision
-import torchvision.transforms as transforms
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import WandbLogger
+from efficientnet_pytorch import EfficientNet
 
-
-
-import librosa
-import openpyxl
-import torch
-import numpy
 import numpy as np
-import sklearn
-import librosa
-import librosa.display
-import matplotlib.pyplot as plt
-import torchvision
-from PIL import Image
-from datetime import datetime
+import pandas as pd 
 import warnings
 import glob
 from tqdm import tqdm
-from joblib import Parallel, delayed
 import pickle
-import pandas as pd 
 from collections import Counter
-import matplotlib.pyplot as plt
-import wandb
-import gc 
+import copy
+import os
 
-import torchaudio
-from audio_self_supervised.dataloader import AudioDataset
+from dataloader import *
+from metrics import *
+
 
 #Implementation from
 # https://github.com/CVxTz/COLA_pytorch/blob/master/audio_encoder/encoder.py
 class FeatureModel(torch.nn.Module):
-    def __init__(self, drop_connect_rate=0.1):
+    def __init__(self, dropout=0.1, model_dimension=1024):
         super(FeatureModel, self).__init__()
 
-        self.cnn1 = torch.nn.Conv2d(1, 3, kernel_size=3)
-        self.efficientnet = EfficientNet.from_name(
-            "efficientnet-b0", include_top=False, drop_connect_rate=drop_connect_rate
-        )
+        self._cnn1 = torch.nn.Conv2d(
+                                in_channels=1, 
+                                out_channels=3, 
+                                kernel_size=3)
+
+        self._efficientnet = EfficientNet.from_name(
+                                "efficientnet-b0", 
+                                include_top=False, 
+                                drop_connect_rate=dropout)
+
+        self._fc1 = nn.Linear(1280, model_dimension)
+
+        self._dropout = torch.nn.Dropout(p=dropout)
+
+        self._layer_norm = torch.nn.LayerNorm(normalized_shape=model_dimension)
+
 
     def forward(self, x):
+        #Input B * C * H * W
         x = x.unsqueeze(1)
 
-        x = self.cnn1(x)
-        x = self.efficientnet(x)
+        x = self._cnn1(x)
+        x = self._efficientnet(x)
+        x =  x.squeeze(3).squeeze(2)
+        x = self._dropout(self._fc1(x))
+        x = self._dropout(torch.tanh(self._layer_norm(x)))
 
-        y = x.squeeze(3).squeeze(2)
-        return y
+        #Output B * D, D=1024
+        return x
 
 class Encoder(torch.nn.Module):
 
@@ -73,7 +72,9 @@ class Encoder(torch.nn.Module):
 
         self._loss = nn.CrossEntropyLoss()
 
-        self._encoder = FeatureModel(drop_connect_rate=0.1)
+        self._encoder = FeatureModel(
+                                dropout=0.1,
+                                model_dimension=self._model_dimension)
 
 
         #Implementation from
@@ -117,25 +118,35 @@ class Encoder(torch.nn.Module):
         del self._target_encoder
         self._target_encoder = None
 
+
     def _ema_copy_model(self, online_model, target_model):
         for current_params, target_params in zip(online_model.parameters(), target_model.parameters()):
             old_weight, new_weight = target_params.data, current_params.data
             target_params.data = old_weight * self._ema_beta + (1 - self._ema_beta) * new_weight
 
+
     def update_moving_average(self):
         if self._target_encoder is not None:
             self._ema_copy_model(self._encoder, self._target_encoder)
+
+
+    def byol_encode(self, x, online=True):
+        if online:
+            x = self._encoder(x)
+        else:
+            if not self._target_networks_initialized:
+                self._target_encoder = copy.deepcopy(self._encoder)
+                self._target_networks_initialized = True
+            x = self._target_encoder(x)
+        x = self._representation_mlp(x)
+        return x
+
     
     def forward(self, x):
         x1, x2 = x
 
-        x1 = self._dropout(self._feature_model(x1))
-        x1 = self._dropout(self.fc1(x1))
-        x1 = self._dropout(self.tanh(self.norm1(x1)))
+        x1 = self._feature_model(x1)
+        x2 = self._feature_model(x2)
 
-        x2 = self._dropout(self._feature_model(x2))
-        x2 = self._dropout(self.fc1(x2))
-        x2 = self._dropout(self.tanh(self.norm1(x2)))
-        
         return x1, x2
     
