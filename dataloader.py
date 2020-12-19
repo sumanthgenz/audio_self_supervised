@@ -87,10 +87,10 @@ if __name__ == '__main__':
     print(t2)
     print(bad_count)
 
-    # f = plt.figure()
-    # f.add_subplot(1, 2, 1)
-    # plt.imshow(view1)
+    f = plt.figure()
+    f.add_subplot(1, 2, 1)
+    plt.imshow(view1)
 
-    # f.add_subplot(1, 2, 2)
-    # plt.imshow(view2)
-    # plt.savefig("Desktop/log_dataloader_two_views.png")
+    f.add_subplot(1, 2, 2)
+    plt.imshow(view2)
+    plt.savefig("Desktop/log_dataloader_two_views.png")
