@@ -200,11 +200,26 @@ class SpecShuffle():
         self.threshold = threshold
 
     def __call__(self, spec):
-        segments = np.array(np.split(spec.T.numpy(), 5, axis=0))
+        segments = np.array(np.split(spec.T.numpy(), 4, axis=0))
         np.random.shuffle(segments)
-        segments = segments.flatten().reshape(1000,128).T
-        return segments
+
+        #used to be reshape(1000,128), but the spec is cropped at top now
+        segments =  segments.flatten().reshape(1000,113).T
+        return torch.from_numpy(segments)
         # return spec
+
+class SpecPermutes():
+
+    def __init__(self, threshold):
+        self.threshold = threshold
+
+    def __call__(self, spec):
+        segments = np.array(np.split(spec.T.numpy(), 4, axis=0))
+        permutes = list(permutations(segments))
+        permutes = [numpy.asarray(seg).flatten().reshape(1000,113).T for seg in permutes]
+        #returns all permutations of segmented spectrogram
+
+        return torch.from_numpy(np.array(permutes))
 
 
 # used to access transforms by name

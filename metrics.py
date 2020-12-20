@@ -56,10 +56,29 @@ def batch_couloumb(x, y, k=0.05, q1=1, q2=1):
         for k in sim_matrix[i]:
             dist = 2 - (1+sim_matrix[i][k])
             if i==k:
-                force_loss -= 1/dist
+                force_loss -= 1/(dist**2)
             else:
-                force_loss += 1/dist
+                force_loss += 1/(dist**2)
     force_loss *= (k*q1*q2)  
+    return force_loss
+
+
+#assume x and y normalized to hypersphere 
+def batch_particle_contrastive(x, y, k=0.05, q1=1, q2=1):
+    sim_matrix = torch.mm(x, y.t())
+    force_loss = 0
+    potentials = []
+    for i in sim_matrix:
+        sample_loss = 0
+        for k in sim_matrix[i]:
+            dist = 2*(1 - sim_matrix[i][k])
+            if i==k:
+                sample_loss -= 1/dist
+            else:
+                sample_loss += 1/dist
+        potentials += [sample_loss]
+    
+    force_loss = k * q1 * q2 * (sum(potentials)/x.shape(1))  
     return force_loss
 
 # lalign and lunif from https://arxiv.org/pdf/2005.10242.pdf

@@ -48,11 +48,16 @@ def augment(sample, wave_transform, spec_transform, threshold):
     spec = get_log_mel_spec(wave)
 
     #suppressing "assert mask_end - mask_start < mask_param" for time/freq masks
-    try:
-        return spec_transform(threshold)(SpecFixedCrop(threshold)(spec))
-    except:
-        # return SpecFixedCrop(threshold)(spec)
-        return spec_transform(threshold)(SpecFixedCrop(threshold)(spec))
+    # try:
+    #     return spec_transform(threshold)(SpecFixedCrop(threshold)(spec[15:]))
+    # except:
+    #     # return SpecFixedCrop(threshold)(spec)
+    #     return spec_transform(threshold)(SpecFixedCrop(threshold)(spec[15:]))
+
+
+    #cropping mel-bins by [15:] to remove NaNs
+    return spec_transform(threshold)(SpecFixedCrop(threshold)(spec[15:]))
+
     # return SpecCrop(threshold)(spec)
 
 def get_augmented_views(path):
@@ -69,16 +74,30 @@ def get_augmented_views(path):
     # wave1 = WaveIdentity
     # wave2 = WaveIdentity
 
-    # spec1 = SpecIdentity
-    # spec2 = SpecShuffle
+    # spec1 = SpecShuffle
+    # spec2 = SpecCheckerNoise
+
+    print(wave1, spec1)
+    print(wave2, spec2)
 
     return augment(sample, wave1, spec1, threshold1), augment(sample, wave2, spec2, threshold2), (wave1, spec1), (wave2, spec2)
+
+def get_temporal_shuffle_views(path):
+    sample, _ = get_wave(path)
+    wave1 = WaveIdentity
+    spec1 = SpecPermutes
+    threshold1 = random.uniform(0.0, 0.5)
+
+    return augment(sample, wave1, spec1, threshold1)
     
 if __name__ == '__main__':
     for _ in tqdm(range(1)):
         filepath = "/{dir}/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav".format(dir = data)
-        view1, view2, _, _ = get_augmented_views(filepath)
-        
+        # view1, view2, _, _ = get_augmented_views(filepath)
+        permutes = get_temporal_shuffle_views(filepath)
+        view1, view2 = permutes[5], permutes[10]
+    
+    print(permutes.shape)
     f = plt.figure()
     f.add_subplot(1, 2, 1)
     plt.imshow(view1)

@@ -21,9 +21,9 @@ from metrics import *
 
 #Implementation from
 # https://github.com/CVxTz/COLA_pytorch/blob/master/audio_encoder/encoder.py
-class FeatureModel(torch.nn.Module):
+class AudioFeatureModel(torch.nn.Module):
     def __init__(self, dropout=0.1, model_dimension=1024):
-        super(FeatureModel, self).__init__()
+        super(AudioFeatureModel, self).__init__()
 
         self._cnn1 = torch.nn.Conv2d(
                                 in_channels=1, 
@@ -44,6 +44,10 @@ class FeatureModel(torch.nn.Module):
 
     def forward(self, x):
         #Input B * C * H * W
+
+        # x = x.type(torch.FloatTensor)
+
+        #Filter out NaN -inf values at top of spec (mel bins), and unsqueeze channel
         x = x.unsqueeze(1)
 
         x = self._cnn1(x)
@@ -62,10 +66,10 @@ class Encoder(torch.nn.Module):
 
         self._model_dimension = 512
 
-        self._fc1 = nn.Linear(1280, 512)
-        self._fc2 = nn.Linear(512, 512, bias=False)
+        self._fc1 = nn.Linear(1024, self._model_dimension)
+        self._fc2 = nn.Linear(self._model_dimension, self._model_dimension, bias=False)
 
-        self._norm1 = nn.LayerNorm(normalized_shape=512)
+        self._norm1 = nn.LayerNorm(normalized_shape=self._model_dimension)
       
         self._dropout = nn.Dropout(p=0.15)
         self._tanh = torch.tanh()
