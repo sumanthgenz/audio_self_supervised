@@ -78,7 +78,7 @@ def batch_particle_contrastive(x, y, k=0.05, q1=1, q2=1):
                 sample_loss += 1/dist
         potentials += [sample_loss]
     
-    force_loss = k * q1 * q2 * (sum(potentials)/x.shape(1))  
+    force_loss = k * q1 * q2 * (sum(potentials)/x.shape(0))  
     return force_loss
 
 # lalign and lunif from https://arxiv.org/pdf/2005.10242.pdf
