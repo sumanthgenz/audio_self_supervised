@@ -42,7 +42,7 @@ def get_log_mel_spec(wave, samp_freq=16000):
     return spec.log2()[0,:,:]
 
 
-def augment(sample, wave_transform, spec_transform, threshold):
+def augment(sample, wave_transform, spec_transform, threshold, fixed_crop=True):
     wave = wave_transform(threshold)(sample)
     wave = wave.type(torch.FloatTensor)
     spec = get_log_mel_spec(wave)
@@ -56,7 +56,10 @@ def augment(sample, wave_transform, spec_transform, threshold):
 
 
     #cropping mel-bins by [15:] to remove NaNs
-    return spec_transform(threshold)(SpecFixedCrop(threshold)(spec[15:]))
+    if fixed_crop:
+        return spec_transform(threshold)(SpecFixedCrop(threshold)(spec[15:]))
+
+    return spec_transform(threshold)(SpecRandomCrop(threshold)(spec[15:]))
 
     # return SpecCrop(threshold)(spec)
 
@@ -84,11 +87,13 @@ def get_augmented_views(path):
 
 def get_temporal_shuffle_views(path):
     sample, _ = get_wave(path)
-    wave1 = WaveIdentity
-    spec1 = SpecPermutes
-    threshold1 = random.uniform(0.0, 0.5)
+    wave = WaveIdentity
+    spec1 = SpecIdentity
+    spec2 = SpecPermutes
+    threshold = random.uniform(0.0, 0.5)
 
-    return augment(sample, wave1, spec1, threshold1)
+    # Return (anchor, permutes), anchor is single sample, permutes is a list of samples
+    return augment(sample, wave, spec1, threshold fixed_crop=False), augment(sample, wave, spec2, threshold1)
     
 if __name__ == '__main__':
     for _ in tqdm(range(1)):

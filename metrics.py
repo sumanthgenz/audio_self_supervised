@@ -48,9 +48,11 @@ def infoNCE(x, y):
     loss = torch.nn.cross_entropy(sim_matrix, pos_pairs)
     return loss
 
-#assume x and y normalized to hypersphere 
-def batch_couloumb(x, y, k=0.05, q1=1, q2=1):
-    sim_matrix = torch.mm(x, y.t())
+#x and y normalized to hypersphere 
+def batch_couloumb(x, y, k=0.05):
+    k = 0.05
+    q1, q2, = 1, 1
+    sim_matrix = torch.mm(x.norm(dim=-1), y.norm(dim=-1).t())
     force_loss = 0
     for i in sim_matrix:
         for k in sim_matrix[i]:
@@ -62,10 +64,11 @@ def batch_couloumb(x, y, k=0.05, q1=1, q2=1):
     force_loss *= (k*q1*q2)  
     return force_loss
 
-
-#assume x and y normalized to hypersphere 
-def batch_particle_contrastive(x, y, k=0.05, q1=1, q2=1):
-    sim_matrix = torch.mm(x, y.t())
+#x and y normalized to hypersphere 
+def batch_particle_contrastive(x, y):
+    k = 0.05
+    q1, q2, = 1, 1
+    sim_matrix = torch.mm(x.norm(dim=-1), y.norm(dim=-1).t())
     force_loss = 0
     potentials = []
     for i in sim_matrix:
@@ -80,6 +83,45 @@ def batch_particle_contrastive(x, y, k=0.05, q1=1, q2=1):
     
     force_loss = k * q1 * q2 * (sum(potentials)/x.shape(0))  
     return force_loss
+
+def temporal_contrastive_balanced(x, y):
+    #x is anchor (B, D), y is permutes (B, P, D)
+
+    #temporal contrast is from a sample x to its temporal permutes
+    temporal = torch.einsum('bpd,bd->bp', y,x) 
+
+    #content contrast is from a sample x to the permutes of another sample
+    content = torch.einsum('bpd,bd->bp', torch.flip(y, [0]), x) 
+
+    #concat temporal and content to achieve B * 2P
+    sim_matrix = torch.cat((temporal, content), 1)
+
+    #the first permute in each permute array is in correct order (pos-pair) 
+    pos_pairs = torch.zeros(x.shape(0))
+
+    #modelled after NCE loss
+    loss = torch.nn.cross_entropy(sim_matrix, pos_pairs)
+
+    return loss
+
+def temporal_contrastive_all(x, y):
+    #x is anchor (B, D), y is permutes (B, P, D)
+
+    p = y.shape(1)
+
+    #effectively flatten y to be (B*P) * D
+    y = y.reshape(y.shape(0)*y.shape(1), y.shape(-1))
+
+    #sim matrix is B * (B*D)
+    sim_matrix = torch.mm(x, y.t())
+
+    #offset by p since that is the number of permutes for each sample
+    pos_pairs =  p * torch.arange(x.size(0))
+
+    #modelled after NCE loss
+    loss = torch.nn.cross_entropy(sim_matrix, pos_pairs)
+
+    return loss
 
 # lalign and lunif from https://arxiv.org/pdf/2005.10242.pdf
 def lalign(x, y, alpha=2):
@@ -103,7 +145,7 @@ def _compute_mAP(logits, targets, threshold):
 
 #implementation from aai/utils/torch/metrics.py
 def compute_mAP(logits, targets, thresholds=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)): 
-    return torch.mean(torch.stack([self._compute_mAP(logits, targets, t) for t in thresholds]))
+    return torch.mean(torch.stack([_compute_mAP(logits, targets, t) for t in thresholds]))
 
 #implementation from aai/utils/torch/metrics.py
 def compute_accuracy(logits, ground_truth, top_k=1):

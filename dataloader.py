@@ -113,9 +113,9 @@ class TemporalDataset(Dataset):
             # feat = np.transpose(np.array(torchaudio.compliance.kaldi.mfcc(wav, sample_frequency=self.samp_freq)))
             # return feat, num_label, self.seq_len
 
-            permutes = get_temporal_shuffle_views(filePath)
+            anchor, permutes = get_temporal_shuffle_views(filePath)
             # return view1.type(torch.FloatTensor), view2.type(torch.FloatTensor), t1, t2
-            return permutes
+            return anchor, permutes
 
         except:
             return None, None, None, None
