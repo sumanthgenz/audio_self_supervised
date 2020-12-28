@@ -93,7 +93,7 @@ def get_temporal_shuffle_views(path):
     threshold = random.uniform(0.0, 0.5)
 
     # Return (anchor, permutes), anchor is single sample, permutes is a list of samples
-    return augment(sample, wave, spec1, threshold fixed_crop=False), augment(sample, wave, spec2, threshold1)
+    return augment(sample, wave, spec1, threshold, fixed_crop=False), augment(sample, wave, spec2, threshold1)
     
 if __name__ == '__main__':
     for _ in tqdm(range(1)):
