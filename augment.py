@@ -9,6 +9,7 @@ import random
 import pickle
 import tqdm
 from tqdm import tqdm
+import av
 
 
 import warnings
@@ -20,6 +21,20 @@ from torchaudio_transforms import *
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
 warnings.filterwarnings("ignore")
+
+
+#Implementation from https://github.com/CannyLab/aai/blob/main/aai/utils/video/file.py
+def get_video(path):
+    input_ = av.open(path, 'r')
+    input_stream = input_.streams.video[0]
+    vid = np.empty([input_stream.frames, input_stream.height, input_stream.width, 3], dtype=np.uint8)
+
+    for idx, frame in enumerate(input_.decode(video=0)):
+        vid[idx] = frame.to_ndarray(format='rgb24')
+    input_.close()
+
+    return torch.from_numpy(vid)
+
 
 def get_wave(path):
     wave, samp_freq = torchaudio.load(path)
@@ -93,22 +108,22 @@ def get_temporal_shuffle_views(path):
     threshold = random.uniform(0.0, 0.5)
 
     # Return (anchor, permutes), anchor is single sample, permutes is a list of samples
-    return augment(sample, wave, spec1, threshold fixed_crop=False), augment(sample, wave, spec2, threshold1)
+    return augment(sample, wave, spec1, threshold, fixed_crop=False), augment(sample, wave, spec2, threshold1)
     
 if __name__ == '__main__':
     for _ in tqdm(range(1)):
         filepath = "/{dir}/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav".format(dir = data)
         # view1, view2, _, _ = get_augmented_views(filepath)
-        permutes = get_temporal_shuffle_views(filepath)
-        view1, view2 = permutes[5], permutes[10]
+        # permutes = get_temporal_shuffle_views(filepath)
+        # view1, view2 = permutes[5], permutes[10]
     
-    print(permutes.shape)
-    f = plt.figure()
-    f.add_subplot(1, 2, 1)
-    plt.imshow(view1)
+    # print(permutes.shape)
+    # f = plt.figure()
+    # f.add_subplot(1, 2, 1)
+    # plt.imshow(view1)
 
-    f.add_subplot(1, 2, 2)
-    plt.imshow(view2)
-    plt.savefig("Desktop/log_mel_two_views.png")
+    # f.add_subplot(1, 2, 2)
+    # plt.imshow(view2)
+    # plt.savefig("Desktop/log_mel_two_views.png")
 
 #Test git push on stout
