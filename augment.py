@@ -35,6 +35,20 @@ def get_video(path):
 
     return torch.from_numpy(vid)
 
+def get_audio(path):
+    input_ = av.open(path, 'r')
+    input_stream = input_.streams.audio[0]
+    aud = np.empty([input_stream.frames, 2, input_stream.frame_size])
+
+    for idx, frame in enumerate(input_.decode(audio=0)):
+        aud[idx] = frame.to_ndarray(format='sp16')
+    input_.close()
+
+    #channel avg, and flatten
+    aud = torch.from_numpy(aud).mean(dim=1).type(dtype=torch.float32)
+    return torch.flatten(aud)
+
+
 
 def get_wave(path):
     wave, samp_freq = torchaudio.load(path)
@@ -112,7 +126,23 @@ def get_temporal_shuffle_views(path):
     
 if __name__ == '__main__':
     for _ in tqdm(range(1)):
-        filepath = "/{dir}/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav".format(dir = data)
+        # filepath = "/{dir}/kinetics_audio/train/25_riding a bike/0->--JMdI8PKvsc.wav".format(dir = data)
+        # filepath = "/big/davidchan/kinetics/kinetics_val_clipped/---QUuC4vJs.mp4"
+        # filepath = "/big/davidchan/kinetics/kinetics_val_clipped/-0ML-FXomBw.mp4"
+        filepath = "/big/davidchan/kinetics/kinetics_val_clipped/-5jkBtJb8xU.mp4"
+
+        vid = get_audio(filepath)
+        # vid = get_video(filepath)
+        # vid, _ = get_wave(filepath)
+
+        print(vid)
+        print(vid.shape)
+
+        spec = get_log_mel_spec(vid)
+        f = plt.figure()
+        plt.imshow(spec)
+        plt.savefig("Desktop/pyav_spec.png")
+        
         # view1, view2, _, _ = get_augmented_views(filepath)
         # permutes = get_temporal_shuffle_views(filepath)
         # view1, view2 = permutes[5], permutes[10]
