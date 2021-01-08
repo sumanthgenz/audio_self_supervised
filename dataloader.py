@@ -34,7 +34,7 @@ if host == "stout":
 elif socket.gethostname() == "greybeard":
     data = "ssd"
 
-class AudioDataset(Dataset):
+class AudioData(Dataset):
 
     def __init__(self, dataType):
         self.dataType = dataType
@@ -77,7 +77,7 @@ class AudioDataset(Dataset):
         except:
             return None, None, None, None
 
-class TemporalDataset(Dataset):
+class TemporalData(Dataset):
 
     def __init__(self, dataType):
         self.dataType = dataType
@@ -120,11 +120,71 @@ class TemporalDataset(Dataset):
         except:
             return None, None, None, None
 
+
+class AudioVisualData(Dataset):
+
+    def __init__(self, dataType):
+        self.dataType = dataType
+        self.dir = "/big/davidchan/kinetics/kinetics_{}_clipped".format(dataType)
+        self.num_classes = 700
+        self.downsamp_factor = 2
+        self.samp_freq = 22050*4
+        self.seq_len = 500
+        self.wav_paths = self.get_all_files()
+        
+    def get_all_files(self):
+        wav_paths = []
+        for path in glob.glob(f'{self.dir}/*.mp4'):
+            wav_paths.append(path)
+        return wav_paths
+
+    def get_pickle(self, classPath):
+        with open('Desktop/kinetics_{}.pickle'.format(classPath), 'rb') as handle:
+            result = pickle.load(handle)
+        return result
+    
+    def __len__(self):
+        return len(self.wav_paths)
+
+    def getNumClasses(self):
+        return self.num_classes
+
+    def __getitem__(self, idx):
+        filePath = self.wav_paths[idx]
+
+        return get_audiovisual(filePath)
+
+
+
 if __name__ == '__main__':
-    cnn1 = torch.nn.Conv2d(
-                    in_channels=1, 
-                    out_channels=3, 
-                    kernel_size=3)
+    conv1 = torch.nn.Conv1d(
+                in_channels=128, 
+                out_channels=128, 
+                kernel_size=50, 
+    )
+
+    conv2 = torch.nn.Conv1d(
+                in_channels=128, 
+                out_channels=128, 
+                kernel_size=50, 
+    )
+
+    pool1 = nn.MaxPool1d(
+            kernel_size=2,
+    )
+    
+    pool2 = nn.MaxPool1d(
+            kernel_size=2,
+            stride=2,
+    )
+
+    conv = nn.Sequential(
+            conv1,
+            pool1,
+            conv2,
+            pool2,
+    )
+
     model = EfficientNet.from_name(
         "efficientnet-b0", 
         include_top=False, 
@@ -137,39 +197,9 @@ if __name__ == '__main__':
     fc1 = torch.nn.Linear(1280, 1024)
     # bad_count = 0
 
-    ad = AudioDataset("train")
+    ad = AudioVisualData("train")
     for i in tqdm(range(1)):
-        view1, view2, t1, t2 = ad.__getitem__(250)
-
-        # print(t1)
-        # print(t2)
-        # print(view1.shape)
-        # view1, view2 = view1.type(torch.FloatTensor), view2.type(torch.FloatTensor)
-        # print(view1.shape)
-        # view1, view2 = cnn1(view1.unsqueeze(0).unsqueeze(0)), cnn1(view2.unsqueeze(0).unsqueeze(0))
-        # print(view1.shape)
-        # view1, view2 = model(view1), model(view2)
-        # print(view1.shape)
-        # view1, view2 =  view1.squeeze(3).squeeze(2), view2.squeeze(3).squeeze(2)
-        # print(view1.shape)
-        # view1, view2 = fc1(view1), fc1(view2)
-        view1, view2 = encoder((view1.type(torch.FloatTensor)).unsqueeze(0)), encoder((view2.type(torch.FloatTensor)).unsqueeze(0))
-
-
-    print(view1.detach())
-    print(view2.detach())
-
-    # print(kl_divergence(
-    #                 (view1.squeeze(0)).detach(),
-    #                 (view1.squeeze(0)).detach()
-    #             )
-    # )
-
-
-    # f = plt.figure()
-    # f.add_subplot(1, 2, 1)
-    # plt.imshow(view1)
-
-    # f.add_subplot(1, 2, 2)
-    # plt.imshow(view2)
-    # plt.savefig("Desktop/log_dataloader_two_views.png")
+        a, v = ad.__getitem__(i)
+        a = conv(a.unsqueeze(0))
+        print(a.shape)
+        print(a)
