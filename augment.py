@@ -24,19 +24,6 @@ torchaudio.set_audio_backend("sox_io")
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
 warnings.filterwarnings("ignore")
 
-
-#Implementation from https://github.com/CannyLab/aai/blob/main/aai/utils/video/file.py
-def get_video(path):
-    input_ = av.open(path, 'r')
-    input_stream = input_.streams.video[0]
-    vid = np.empty([input_stream.frames, input_stream.height, input_stream.width, 3], dtype=np.uint8)
-
-    for idx, frame in enumerate(input_.decode(video=0)):
-        vid[idx] = frame.to_ndarray(format='rgb24')
-    input_.close()
-
-    return torch.from_numpy(vid)
-
 def get_audio(path):
     input_ = av.open(path, 'r')
     input_stream = input_.streams.audio[0]
@@ -53,16 +40,53 @@ def get_audio(path):
     # aud = torch.from_numpy(aud).type(dtype=torch.float32)
     # return torch.reshape(aud, (aud.size(1), -1))[1]
 
+#Implementation from https://github.com/CannyLab/aai/blob/main/aai/utils/video/file.py
+def get_video(path):
+    input_ = av.open(path, 'r')
+    input_stream = input_.streams.video[0]
+    vid = np.empty([input_stream.frames, input_stream.height, input_stream.width, 3], dtype=np.uint8)
+
+    for idx, frame in enumerate(input_.decode(video=0)):
+        vid[idx] = frame.to_ndarray(format='rgb24')
+    input_.close()
+
+    return torch.from_numpy(vid)
+
+#Implementation from https://github.com/CannyLab/aai/blob/main/aai/utils/video/transform.py
+def resize_video(video_frames: np.ndarray, target_size: Tuple[int, int]) -> np.ndarray:
+    assert len(video_frames.shape) == 4, 'Video should have shape [N_Frames x H x W x C]'
+    # print(video_frames)
+
+    pad = 300 -  video_frames.shape[0]
+    if pad > 0:
+        video_frames =  np.pad(video_frames, pad_width=[(0, pad), (0,0), (0,0), (0,0)])
+
+    output_array = np.zeros((
+        video_frames.shape[0],
+        target_size[0],
+        target_size[1],
+        video_frames.shape[3],
+    ))
+    for i in range(video_frames.shape[0]):
+        output_array[i] = cv2.resize(video_frames[i], target_size)
+    # return output_array, pad
+    return output_array
+
 
 def get_audiovisual(path):
-    input_ = av.open(path, 'r')
-    a_stream = input_.streams.audio[0]
-    v_stream = input_.streams.video[0]
+    input_a = av.open(path, 'r')
+    input_v = av.open(path, 'r')
 
-    vid = np.empty([v_stream.frames, v_stream.height, v_stream.width, 3], dtype=np.uint8)
-    aud = np.empty([a_stream.frames, 2, a_stream.frame_size])
+    a_stream = input_a.streams.audio[0]
+    v_stream = input_v.streams.video[0]
 
-    for idx, frame in enumerate(input_.decode(audio=0)):
+    audio_channels = 2
+    video_channels = 3
+
+    vid = np.empty([v_stream.frames, v_stream.height, v_stream.width, video_channels], dtype=np.uint8)
+    aud = np.empty([a_stream.frames, audio_channels, a_stream.frame_size])
+
+    for idx, frame in enumerate(input_a.decode(audio=0)):
         aud_frame = frame.to_ndarray(format='sp32')
         pad =  a_stream.frame_size - aud_frame.shape[-1]
         if pad > 0:
@@ -70,16 +94,20 @@ def get_audiovisual(path):
         else:
             aud[idx] = aud_frame
 
-    for idx, frame in enumerate(input_.decode(video=0)):
+    for idx, frame in enumerate(input_v.decode(video=0)):
         vid[idx] = frame.to_ndarray(format='rgb24')
 
+    input_a.close()
+    input_v.close()
+
     aud = get_log_mel_spec(torch.flatten(torch.from_numpy(aud).mean(dim=1).type(dtype=torch.float32)))[:,:]
-    vid = torch.from_numpy(resize_video(vid, target_size=(128,128)))
+    vid = torch.from_numpy(resize_video(vid, target_size=(128,128))).type(dtype=torch.float32)
+    vid = torch.reshape(vid, (vid.size(-1), vid.size(0), vid.size(1), vid.size(2)))
 
     #aud shape: [M * N], where M = 128, T ~ 2000
-    #vid shape: [N * H * W * C], where N <= 300, H = W = 128, C = 3
-    return aud, vid
+    #vid shape: [C * N * H * W], where N <= 300, H = W = 128, C = 3
 
+    return aud, vid
 
 def get_wave(path):
     wave, samp_freq = torchaudio.load(path)
@@ -103,24 +131,6 @@ def get_log_mel_spec(wave, samp_freq=16000):
     spec[torch.isinf(spec)] = 0
     return spec 
 
-#Implementation from https://github.com/CannyLab/aai/blob/main/aai/utils/video/transform.py
-def resize_video(video_frames: np.ndarray, target_size: Tuple[int, int]) -> np.ndarray:
-    assert len(video_frames.shape) == 4, 'Video should have shape [N_Frames x H x W x C]'
-
-    # pad = 300 -  video_frames.shape[0]
-    # if pad > 0:
-    #     video_frames =  np.pad(video_frames, pad_width=[(0, pad), (0,0), (0,0), (0,0)])
-
-    output_array = np.zeros((
-        video_frames.shape[0],
-        target_size[0],
-        target_size[1],
-        video_frames.shape[3],
-    ))
-    for i in range(video_frames.shape[0]):
-        output_array[i] = cv2.resize(video_frames[i], target_size)
-    # return output_array, pad
-    return output_array
 
 def augment(sample, wave_transform, spec_transform, threshold, fixed_crop=True):
     wave = wave_transform(threshold)(sample)
