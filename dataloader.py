@@ -157,16 +157,23 @@ class AudioVisualData(Dataset):
 
 
 if __name__ == '__main__':
+
+
+    video_feat_dim = 14
+    audio_feat_dim = 128
+
+    #audio convnet 
     conv1 = torch.nn.Conv1d(
-                in_channels=128, 
-                out_channels=128, 
-                kernel_size=50, 
+                in_channels=audio_feat_dim, 
+                out_channels=audio_feat_dim, 
+                kernel_size=2, 
+                stride=2,
     )
 
     conv2 = torch.nn.Conv1d(
-                in_channels=128, 
-                out_channels=128, 
-                kernel_size=50, 
+                in_channels=audio_feat_dim, 
+                out_channels=audio_feat_dim, 
+                kernel_size=2,
     )
 
     pool1 = nn.MaxPool1d(
@@ -175,31 +182,84 @@ if __name__ == '__main__':
     
     pool2 = nn.MaxPool1d(
             kernel_size=2,
-            stride=2,
     )
 
-    conv = nn.Sequential(
+    audio_conv = nn.Sequential(
             conv1,
             pool1,
             conv2,
             pool2,
     )
 
-    model = EfficientNet.from_name(
-        "efficientnet-b0", 
-        include_top=False, 
-        drop_connect_rate=0.1)
 
-    encoder = AudioFeatureModel(
-                            dropout=0.1,
-                            model_dimension=1024)
 
-    fc1 = torch.nn.Linear(1280, 1024)
-    # bad_count = 0
+    #video convnet 
+    conv3 = torch.nn.Conv3d(
+                in_channels=3, 
+                out_channels=64, 
+                kernel_size=[1,4,4],         
+    )
+
+    conv4 = torch.nn.Conv3d(
+                in_channels=64, 
+                out_channels=32, 
+                kernel_size=[1,4,4], 
+    )
+
+    conv5 = torch.nn.Conv3d(
+                in_channels=32, 
+                out_channels=1, 
+                kernel_size=[1,4,4], 
+    )
+
+    pool3 = nn.MaxPool3d(
+                kernel_size=[1,5,5], 
+    )
+    
+    pool4 = nn.MaxPool3d(
+                kernel_size=[1,4,4], 
+                stride=1,
+    )
+
+    pool5 = nn.MaxPool3d(
+                kernel_size=[1,3,3], 
+                stride=1,
+    )
+
+    video_conv = nn.Sequential(
+            conv3,
+            pool3,
+            conv4,
+            pool4,
+            conv5,
+            pool5,
+    )
+
+    fc = nn.Linear(video_feat_dim**2, audio_feat_dim)
 
     ad = AudioVisualData("train")
     for i in tqdm(range(1)):
-        a, v = ad.__getitem__(i)
-        a = conv(a.unsqueeze(0))
+        # a, v = ad.__getitem__(1)
+
+        a1, v1 = ad.__getitem__(0)
+        a2, v2 = ad.__getitem__(1000)
+        a = torch.stack((a1, a2))
+        v = torch.stack((v1, v2))
+
+        a = audio_conv(a)
+        v = video_conv(v).squeeze()
+        v = fc(v.view(v.size(0), v.size(1), video_feat_dim**2))
+        v = torch.einsum('ntd->ndt', [v])
+
+        # a = audio_conv(a.unsqueeze(0))
+        # print(a)
+        # print(a.shape)
+
+    
+
+
+        # v = video_conv(v.unsqueeze(0))
+        # print(v)
         print(a.shape)
-        print(a)
+        print(v.shape)
+
