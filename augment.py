@@ -18,7 +18,7 @@ import glob
 from typing import Tuple, Optional
 
 from metrics import *
-from torchaudio_transforms import *
+from transforms import *
 
 torchaudio.set_audio_backend("sox_io") 
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/home/sgurram/anaconda3/bin/ffmpeg"
