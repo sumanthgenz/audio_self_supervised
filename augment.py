@@ -72,6 +72,11 @@ def resize_video(video_frames: np.ndarray, target_size: Tuple[int, int]) -> np.n
     # return output_array, pad
     return output_array
 
+def pad_spec(spec, pad_len=2000):
+    to_pad = pad_len - spec.shape[-1] 
+    if to_pad > 0:
+        return torch.nn.functional.pad(spec, (0,to_pad,0,0))
+    return spec[:,:pad_len]
 
 def get_audiovisual(path):
     input_a = av.open(path, 'r')
@@ -100,12 +105,13 @@ def get_audiovisual(path):
     input_a.close()
     input_v.close()
 
-    aud = get_log_mel_spec(torch.flatten(torch.from_numpy(aud).mean(dim=1).type(dtype=torch.float32)))[:,:]
+    aud = get_log_mel_spec(torch.flatten(torch.from_numpy(aud).mean(dim=1).type(dtype=torch.float32)))
+    aud = pad_spec(aud)
     vid = torch.from_numpy(resize_video(vid, target_size=(128,128))).type(dtype=torch.float32)
     vid = torch.reshape(vid, (vid.size(-1), vid.size(0), vid.size(1), vid.size(2)))
 
-    #aud shape: [M * N], where M = 128, T ~ 2000
-    #vid shape: [C * N * H * W], where N <= 300, H = W = 128, C = 3
+    #aud shape: [T * M], where M = 128, T ~ 2000
+    #vid shape: [C * T * H * W], where T <= 300, H = W = 128, C = 3
 
     return aud, vid
 
