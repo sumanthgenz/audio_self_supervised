@@ -246,8 +246,6 @@ class BYOLEncoder(torch.nn.Module):
         return self._frame_input_projection(x.reshape(-1, self._feature_dimension)).reshape(
             x.shape[0], x.shape[1], self._model_dimension)
 
-   
-
     def _encode_sequence(self, seq, seqlen, online=True):
         if online:
             encoded = self._encoder(

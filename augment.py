@@ -17,6 +17,7 @@ import warnings
 import glob
 from typing import Tuple, Optional
 
+from utils import *
 from metrics import *
 from transforms import *
 
@@ -51,32 +52,6 @@ def get_video(path):
     input_.close()
 
     return torch.from_numpy(vid)
-
-#Implementation from https://github.com/CannyLab/aai/blob/main/aai/utils/video/transform.py
-def resize_video(video_frames: np.ndarray, target_size: Tuple[int, int]) -> np.ndarray:
-    assert len(video_frames.shape) == 4, 'Video should have shape [N_Frames x H x W x C]'
-    # print(video_frames)
-
-    pad = 300 -  video_frames.shape[0]
-    if pad > 0:
-        video_frames =  np.pad(video_frames, pad_width=[(0, pad), (0,0), (0,0), (0,0)])
-
-    output_array = np.zeros((
-        video_frames.shape[0],
-        target_size[0],
-        target_size[1],
-        video_frames.shape[3],
-    ))
-    for i in range(video_frames.shape[0]):
-        output_array[i] = cv2.resize(video_frames[i], target_size)
-    # return output_array, pad
-    return output_array
-
-def pad_spec(spec, pad_len=2000):
-    to_pad = pad_len - spec.shape[-1] 
-    if to_pad > 0:
-        return torch.nn.functional.pad(spec, (0,to_pad,0,0))
-    return spec[:,:pad_len]
 
 def get_audiovisual(path):
     input_a = av.open(path, 'r')
