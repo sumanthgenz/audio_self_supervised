@@ -25,6 +25,11 @@ class VideoBYOLightning(pl.LightningModule):
 
         self.encoder = BYOLEncoder()
 
+    # Handle BYOL component: Implemetation from https://github.com/CannyLab/aai/blob/main/aai/research/gptcaptions/driver.py
+    def on_before_zero_grad(self, _):
+        self.model.update_moving_average()
+
+
     def training_step(self, batch, batch_idx):
         audio, video = batch
         x_online, y_online, x_target, y_target = self.encoder(audio, video)
@@ -68,31 +73,30 @@ class VideoBYOLightning(pl.LightningModule):
         return {'val_total_loss': avg_total_loss, 'log': logs}
 
     def train_dataloader(self):
-        dataset = TemporalShuffleData(data_type='train')
+        dataset = AudioVisualData(data_type='train')
         return torch.utils.data.DataLoader(
                                 dataset,
-                                batch_size=self._bsz,
+                                batch_size=self.encoder._batch_size,
                                 shuffle=True,
-                                collate_fn=self.collate_fn,
                                 num_workers=8)
 
     def val_dataloader(self):
-          dataset = TemporalShuffleData(data_type='validate')
+          dataset = AudioVisualData(data_type='val')
           return torch.utils.data.DataLoader(
                                   dataset,
-                                  batch_size=self._bsz,
-                                  shuffle=True,
+                                batch_size=self.encoder._batch_size,
+                                  shuffle=False,
                                   collate_fn=self.collate_fn,
                                   num_workers=8)
 
-    def test_dataloader(self):
-        dataset = TemporalShuffleData(data_type='test')
-        return torch.utils.data.DataLoader(
-                                dataset,
-                                batch_size=self._bsz,
-                                collate_fn=self.collate_fn,
-                                shuffle=False,
-                                num_workers=8)
+    #test clipped folder does not exist on stout
+    # def test_dataloader(self):
+    #     dataset = AudioVisualData(data_type='test')
+    #     return torch.utils.data.DataLoader(
+    #                             dataset,
+    #                             batch_size=self.encoder._batch_size,
+    #                             shuffle=False,
+    #                             num_workers=8)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.encoder._learning_rate)
