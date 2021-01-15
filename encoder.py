@@ -123,15 +123,19 @@ class BYOLEncoder(torch.nn.Module):
                 feat_dimension=512,
                 seqlen=277,
                 batch_size=5, 
+                learning_rate=1e-3,
                 num_heads=4, 
                 num_layers=4, 
-                ema_beta=0.95):
+                ema_beta=0.95,
+                cos_loss_weight=0.5,
+                kldiv_loss_weight=0.45,
+                random_loss_weight=0.05):
 
         super(BYOLEncoder, self).__init__()
 
         self._model_dimension = model_dimension
         self._feature_dimension = feat_dimension
-        self._seqlen =290
+        self._seqlen = seqlen
         self._batch_size = batch_size
         self._num_heads = num_heads
         self._num_layers = num_layers
@@ -188,6 +192,10 @@ class BYOLEncoder(torch.nn.Module):
         self._target_encoder = None
         self._target_networks_initialized = False
         self._ema_beta = ema_beta
+        self._cosine_loss_weight = cosine_loss_weight
+        self._kldiv_loss_weight = kldiv_loss_weight
+        self._random_loss_weight = random_loss_weight
+        self._learning_rate = learning_rate
 
     def get_temporal_modality_views(self, audio, video):
         a1, a2 = torch.split(audio, split_size_or_sections=audio.shape[1]//2, dim=1) 
@@ -311,8 +319,27 @@ class BYOLEncoder(torch.nn.Module):
         x_target = torch.nn.functional.normalize(x_target, p=2, dim=-1) 
         y_target = torch.nn.functional.normalize(y_target, p=2, dim=-1)
 
-        #byol code here:
-        return x_online, y_online
+        #byol-encoded views
+        return x_online, y_online, x_target, y_target
+    
+    def loss(self, x_online, y_online, x_target, y_target):
+        cos_loss = cosine_loss(x_online, y_target) + cosine_loss(x_target, y_online)
+        kl_loss = kldiv_loss(x_online, y_target) + kl_div_loss(x_target, y_online)
+        rand_loss = random_loss(x_online, y_target) + random_loss(x_target, y_online)
+
+        total_loss = torch.zeros([]).cuda()
+        total_loss += self._cosine_loss_weight * cos_loss 
+        total_loss += self._kldiv_loss_weight * kl_loss 
+        total_loss += self._random_loss_weight * rand_loss 
+
+        metrics = {
+            'cosine_loss': cos_loss,
+            'kldiv_loss': kl_loss,
+            'random_loss': rand_loss,
+            'total_loss': total_loss
+        }
+
+        return metrics
 
 
 #Implementation from
