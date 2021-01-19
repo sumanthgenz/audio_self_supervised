@@ -162,95 +162,95 @@ if __name__ == '__main__':
     video_feat_dim = 14
     audio_feat_dim = 512
 
-    #audio convnet 
-    conv1 = torch.nn.Conv1d(
-                in_channels=128, 
-                out_channels=audio_feat_dim, 
-                kernel_size=2, 
-                stride=2,
-    )
+    # #audio convnet 
+    # conv1 = torch.nn.Conv1d(
+    #             in_channels=128, 
+    #             out_channels=audio_feat_dim, 
+    #             kernel_size=2, 
+    #             stride=2,
+    # )
 
-    conv2 = torch.nn.Conv1d(
-                in_channels=audio_feat_dim, 
-                out_channels=audio_feat_dim, 
-                kernel_size=2,
-                stride=2,
-    )
+    # conv2 = torch.nn.Conv1d(
+    #             in_channels=audio_feat_dim, 
+    #             out_channels=audio_feat_dim, 
+    #             kernel_size=2,
+    #             stride=2,
+    # )
 
-    pool1 = nn.MaxPool1d(
-            kernel_size=2,
-            stride=2
-    )
+    # pool1 = nn.MaxPool1d(
+    #         kernel_size=2,
+    #         stride=2
+    # )
 
-    audio_conv = nn.Sequential(
-            conv1,
-            conv2,
-            pool1,
-    )
+    # audio_conv = nn.Sequential(
+    #         conv1,
+    #         conv2,
+    #         pool1,
+    # )
 
 
 
-    #video convnet 
-    conv3 = torch.nn.Conv3d(
-                in_channels=3, 
-                out_channels=64, 
-                kernel_size=[1,4,4],         
-    )
+    # #video convnet 
+    # conv3 = torch.nn.Conv3d(
+    #             in_channels=3, 
+    #             out_channels=64, 
+    #             kernel_size=[1,4,4],         
+    # )
 
-    conv4 = torch.nn.Conv3d(
-                in_channels=64, 
-                out_channels=32, 
-                kernel_size=[1,4,4], 
-    )
+    # conv4 = torch.nn.Conv3d(
+    #             in_channels=64, 
+    #             out_channels=32, 
+    #             kernel_size=[1,4,4], 
+    # )
 
-    conv5 = torch.nn.Conv3d(
-                in_channels=32, 
-                out_channels=1, 
-                kernel_size=[1,4,4], 
-    )
+    # conv5 = torch.nn.Conv3d(
+    #             in_channels=32, 
+    #             out_channels=1, 
+    #             kernel_size=[1,4,4], 
+    # )
 
-    pool3 = nn.MaxPool3d(
-                kernel_size=[1,5,5], 
-    )
+    # pool3 = nn.MaxPool3d(
+    #             kernel_size=[1,5,5], 
+    # )
     
-    pool4 = nn.MaxPool3d(
-                kernel_size=[1,4,4], 
-                stride=1,
-    )
+    # pool4 = nn.MaxPool3d(
+    #             kernel_size=[1,4,4], 
+    #             stride=1,
+    # )
 
-    pool5 = nn.MaxPool3d(
-                kernel_size=[1,3,3], 
-                stride=1,
-    )
+    # pool5 = nn.MaxPool3d(
+    #             kernel_size=[1,3,3], 
+    #             stride=1,
+    # )
 
-    video_conv = nn.Sequential(
-            conv3,
-            pool3,
-            conv4,
-            pool4,
-            conv5,
-            pool5,
-    )
+    # video_conv = nn.Sequential(
+    #         conv3,
+    #         pool3,
+    #         conv4,
+    #         pool4,
+    #         conv5,
+    #         pool5,
+    # )
 
-    fc = nn.Linear(video_feat_dim**2, audio_feat_dim)
+    # fc = nn.Linear(video_feat_dim**2, audio_feat_dim)
 
-    resnet_model = torchvision.models.resnet18(pretrained=True)
+    # resnet_model = torchvision.models.resnet18(pretrained=True)
 
-    feature_model = torch.nn.Sequential(
-            resnet_model.conv1,
-            resnet_model.bn1,
-            resnet_model.relu,
-            resnet_model.maxpool,
-            resnet_model.layer1,
-            resnet_model.layer2,
-            resnet_model.layer3,
-            resnet_model.layer4,
-            )
+    # feature_model = torch.nn.Sequential(
+    #         resnet_model.conv1,
+    #         resnet_model.bn1,
+    #         resnet_model.relu,
+    #         resnet_model.maxpool,
+    #         resnet_model.layer1,
+    #         resnet_model.layer2,
+    #         resnet_model.layer3,
+    #         resnet_model.layer4,
+    #         )
 
     audio_model = AudioFeatureModel()
     video_model = VideoFeatureModel()
 
-    byol_model = BYOLEncoder()
+    byol_model = BYOLEncoder(batch_size=5)
 
     ad = AudioVisualData("train")
     for i in tqdm(range(1)):
@@ -282,12 +282,13 @@ if __name__ == '__main__':
 
         # a = audio_model(a)
         # v = video_model(v)
-        view1, view2 = byol_model(a,v)
+        view1, view2, _, _ = byol_model(a,v)
 
-        print(view1)
-        print(view2)
+        # print(view1)
+        # print(view2)
         print(view1.shape)
         print(view2.shape)
+        print(cosine_loss(view1, view2).shape)
 
         # v = video_conv(v).squeeze()
         # v = fc(v.view(v.size(0), v.size(1), video_feat_dim**2))

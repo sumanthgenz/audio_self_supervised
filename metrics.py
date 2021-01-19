@@ -39,7 +39,7 @@ def vector_couloumb(x, y, pos_pair, k=0.05, q1=1, q2=1):
 
 #Batch-Wise
 #x, y have dims B * N, where B=bsz and N= latent_feature_dimensions
-def infoNCE(x, y):
+def nce_loss(x, y):
     #sim matrix dims = B * B, and hold pairwise (per sample) dot-product similarity for x, y views
     #pos_pairs dims = N, and specify which indices correspond to positive-pair dot products per sample in x
 
@@ -47,6 +47,29 @@ def infoNCE(x, y):
     sim_matrix = torch.mm(x, y.t())
     loss = torch.nn.cross_entropy(sim_matrix, pos_pairs)
     return loss
+
+#Implementation from: https://github.com/CannyLab/aai/blob/116187e61bc15f1bff407d7396182061d49c4489/aai/alexandria/losses/linear.py#L22
+def cosine_loss(x, y):
+     loss = torch.nn.functional.cosine_similarity(y.reshape(-1, x.shape[-1]),
+                                                x.reshape(-1, x.shape[-1]),
+                                                dim=-1)
+     return (2 - 2 * loss).mean()
+
+def kldiv_loss(x, y):
+     loss = torch.nn.functional.kl_div(x, y, 
+                                       reduction='mean')
+     return loss
+
+
+#Implementation from: https://github.com/CannyLab/aai/blob/main/aai/research/gptcaptions/models/encoders/predictive_byol.py
+def random_loss(x, y):
+     loss = (x * torch.randn(
+            x.shape[0], 1, x.shape[-1]).type_as(x).expand(-1, x.shape[1], -1)).mean()
+
+     loss += (y * torch.randn(
+            y.shape[0], 1, y.shape[-1]).type_as(y).expand(-1, y.shape[1], -1)).mean()
+
+     return loss
 
 #x and y normalized to hypersphere 
 def batch_couloumb(x, y, k=0.05):
@@ -158,6 +181,3 @@ def compute_accuracy(logits, ground_truth, top_k=1):
     correct = pred.eq(ground_truth.reshape(1, -1).expand_as(pred))
     correct_k = correct[:top_k].reshape(-1).float().sum(0)
     return correct_k.mul_(100.0 / batch_size)
-
-x = torch.zeros(1, 2, 3)
-print(x.size(-2))
