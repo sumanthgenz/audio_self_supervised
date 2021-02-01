@@ -12,9 +12,14 @@ def resize_video(video_frames: np.ndarray, target_size: Tuple[int, int]) -> np.n
     assert len(video_frames.shape) == 4, 'Video should have shape [N_Frames x H x W x C]'
     # print(video_frames)
 
-    pad = 300 -  video_frames.shape[0]
-    if pad > 0:
-        video_frames =  np.pad(video_frames, pad_width=[(0, pad), (0,0), (0,0), (0,0)])
+    # pad = 300 -  video_frames.shape[0]
+    # if pad > 0:
+    #     video_frames =  np.pad(video_frames, pad_width=[(0, pad), (0,0), (0,0), (0,0)])
+
+    seq_len = 16
+    subsample_rate = int(video_frames.shape[0] / seq_len)
+    video_frames = (video_frames[::subsample_rate])[:seq_len]
+    assert video_frames.shape[0] == seq_len
 
     output_array = np.zeros((
         video_frames.shape[0],
@@ -27,7 +32,7 @@ def resize_video(video_frames: np.ndarray, target_size: Tuple[int, int]) -> np.n
     # return output_array, pad
     return output_array
 
-def pad_spec(spec, pad_len=2000):
+def pad_spec(spec, pad_len=2048):
     to_pad = pad_len - spec.shape[-1] 
     if to_pad > 0:
         return torch.nn.functional.pad(spec, (0,to_pad,0,0))
